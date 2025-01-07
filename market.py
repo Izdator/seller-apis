@@ -11,6 +11,26 @@ logger = logging.getLogger(__file__)
 
 
 def get_product_list(page, campaign_id, access_token):
+    """Fetches a list of product offer mapping entries from Yandex.Market API.
+
+    This function retrieves a paginated list of product offers associated with a specific campaign
+    using the provided access token for authorization.
+
+    Args:
+        page (str): The token for the page of results to retrieve.
+        campaign_id (str): The ID of the campaign to fetch offers for.
+        access_token (str): The OAuth2 access token for authenticating the API request.
+
+    Returns:
+        list: A list of product offer mapping entries if the request is successful.
+
+    Example of correct usage:
+        product_list = get_product_list("page_token_example", "123456", "your_access_token")
+
+    Example of incorrect usage:
+        product_list = get_product_list("invalid_page_token", "invalid_campaign_id", "invalid_access_token")
+        # This will raise an HTTPError if the request fails due to invalid parameters.
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -46,6 +66,27 @@ def update_stocks(stocks, campaign_id, access_token):
 
 
 def update_price(prices, campaign_id, access_token):
+    """
+    Updates the stock levels of products in Yandex.Market API.
+
+    This function sends a request to update the stock levels for a list of products
+    associated with a specific campaign using the provided access token for authorization.
+
+    Args:
+        stocks (list): A list of stock keeping units (SKUs) with their updated stock levels.
+        campaign_id (str): The ID of the campaign to update stocks for.
+        access_token (str): The OAuth2 access token for authenticating the API request.
+
+    Returns:
+        dict: A response object containing the result of the stock update request if successful.
+
+    Example of correct usage:
+        response = update_stocks([{"sku": "sku_example_1", "stock": 10}, {"sku": "sku_example_2", "stock": 5}], "123456", "your_access_token")
+
+    Example of incorrect usage:
+        response = update_stocks([{"sku": "invalid_sku", "stock": -1}], "invalid_campaign_id", "invalid_access_token")
+        # This will raise an HTTPError if the request fails due to invalid parameters.
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
@@ -62,7 +103,27 @@ def update_price(prices, campaign_id, access_token):
 
 
 def get_offer_ids(campaign_id, market_token):
-    """Получить артикулы товаров Яндекс маркета"""
+    """
+    Retrieves the offer IDs of products from Yandex.Market API.
+
+    This function fetches all product offer mapping entries associated with a specific campaign
+    using the provided market token for authorization. It handles pagination to ensure all offers
+    are retrieved.
+
+    Args:
+        campaign_id (str): The ID of the campaign to fetch offer IDs for.
+        market_token (str): The OAuth2 access token for authenticating the API request.
+
+    Returns:
+        list: A list of offer IDs (shop SKUs) for the products associated with the specified campaign.
+
+    Example of correct usage:
+        offer_ids = get_offer_ids("123456", "your_market_token")
+
+    Example of incorrect usage:
+        offer_ids = get_offer_ids("invalid_campaign_id", "invalid_market_token")
+        # This will raise an HTTPError if the request fails due to invalid parameters.
+    """
     page = ""
     product_list = []
     while True:
@@ -78,6 +139,31 @@ def get_offer_ids(campaign_id, market_token):
 
 
 def create_stocks(watch_remnants, offer_ids, warehouse_id):
+    """
+    Creates a list of stock entries for products based on the provided watch remnants and offer IDs.
+
+    This function processes the watch remnants to generate stock information for products that are
+    available in the market. It checks if the product codes from the watch remnants exist in the
+    provided offer IDs and constructs stock entries accordingly. If a product is not found in the
+    watch remnants, it adds an entry with a stock count of zero.
+
+    Args:
+        watch_remnants (list): A list of dictionaries containing product information, including
+                                product codes and quantities.
+        offer_ids (list): A list of offer IDs (product codes) that are currently available in the market.
+        warehouse_id (str): The ID of the warehouse where the stock is held.
+
+    Returns:
+        list: A list of stock entries formatted for the API, each containing SKU, warehouse ID,
+                and stock count information.
+
+    Example of correct usage:
+        stocks = create_stocks(watch_remnants_data, ["sku_example_1", "sku_example_2"], "warehouse_123")
+
+    Example of incorrect usage:
+        stocks = create_stocks([], [], "invalid_warehouse_id")
+        # This will return an empty list as there are no watch remnants or offer IDs to process.
+    """
     # Уберем то, что не загружено в market
     stocks = list()
     date = str(datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
@@ -123,6 +209,28 @@ def create_stocks(watch_remnants, offer_ids, warehouse_id):
 
 
 def create_prices(watch_remnants, offer_ids):
+    """
+    Creates a list of price entries for products based on the provided watch remnants and offer IDs.
+
+    This function processes the watch remnants to generate price information for products that are
+    available in the market. It checks if the product codes from the watch remnants exist in the
+    provided offer IDs and constructs price entries accordingly.
+
+    Args:
+        watch_remnants (list): A list of dictionaries containing product information, including
+                                product codes and prices.
+        offer_ids (list): A list of offer IDs (product codes) that are currently available in the market.
+
+    Returns:
+        list: A list of price entries formatted for the API, each containing product ID and price information.
+
+    Example of correct usage:
+        prices = create_prices(watch_remnants_data, ["sku_example_1", "sku_example_2"])
+
+    Example of incorrect usage:
+        prices = create_prices([], [])
+        # This will return an empty list as there are no watch remnants or offer IDs to process.
+    """
     prices = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -143,6 +251,30 @@ def create_prices(watch_remnants, offer_ids):
 
 
 async def upload_prices(watch_remnants, campaign_id, market_token):
+    """
+    Uploads price entries for products based on the provided watch remnants, campaign ID, and market token.
+
+    This asynchronous function retrieves the offer IDs associated with the specified campaign and
+    generates price information for products available in the market using the `create_prices` function.
+    It then divides the price entries into batches of 500 and updates the prices in the market using
+    the `update_price` function for each batch.
+
+    Args:
+        watch_remnants (list): A list of dictionaries containing product information, including
+                                product codes and prices.
+        campaign_id (str): The ID of the campaign for which the prices are being uploaded.
+        market_token (str): The token used for authentication with the market API.
+
+    Returns:
+        list: A list of price entries that were uploaded, formatted for the API.
+
+    Example of correct usage:
+        uploaded_prices = await upload_prices(watch_remnants_data, "campaign_123", "market_token_abc")
+
+    Example of incorrect usage:
+        uploaded_prices = await upload_prices([], "invalid_campaign_id", "invalid_token")
+        # This will return an empty list as there are no watch remnants to process.
+    """
     offer_ids = get_offer_ids(campaign_id, market_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_prices in list(divide(prices, 500)):
@@ -151,6 +283,33 @@ async def upload_prices(watch_remnants, campaign_id, market_token):
 
 
 async def upload_stocks(watch_remnants, campaign_id, market_token, warehouse_id):
+    """
+    Uploads stock entries for products based on the provided watch remnants, campaign ID, market token, and warehouse ID.
+
+    This asynchronous function retrieves the offer IDs associated with the specified campaign and generates stock
+    information for products available in the market using the `create_stocks` function. It then divides the stock
+    entries into batches of 2000 and updates the stocks in the market using the `update_stocks` function for each
+    batch. Finally, it filters out the stocks that have a count of zero and returns both the non-empty stocks and
+    the complete list of stocks.
+
+    Args:
+        watch_remnants (list): A list of dictionaries containing product information, including product codes.
+        campaign_id (str): The ID of the campaign for which the stocks are being uploaded.
+        market_token (str): The token used for authentication with the market API.
+        warehouse_id (str): The ID of the warehouse where the stocks are located.
+
+    Returns:
+        tuple: A tuple containing:
+            - list: A list of non-empty stock entries that were uploaded, formatted for the API.
+            - list: A complete list of stock entries that were created.
+
+    Example of correct usage:
+        non_empty_stocks, all_stocks = await upload_stocks(watch_remnants_data, "campaign_123", "market_token_abc", "warehouse_456")
+
+    Example of incorrect usage:
+        non_empty_stocks, all_stocks = await upload_stocks([], "invalid_campaign_id", "invalid_token", "invalid_warehouse_id")
+        # This will return empty lists as there are no watch remnants to process.
+    """
     offer_ids = get_offer_ids(campaign_id, market_token)
     stocks = create_stocks(watch_remnants, offer_ids, warehouse_id)
     for some_stock in list(divide(stocks, 2000)):
