@@ -50,6 +50,27 @@ def get_product_list(page, campaign_id, access_token):
 
 
 def update_stocks(stocks, campaign_id, access_token):
+    """
+    Updates the stock information for the specified products in the Yandex Market API.
+
+    This function sends a PUT request to the Yandex Market API to update the stock levels
+    for the given list of stock keeping units (SKUs) associated with a specific campaign.
+
+    Args:
+        stocks (list): A list of stock keeping units (SKUs) to be updated.
+        campaign_id (str): The ID of the campaign for which the stocks are being updated.
+        access_token (str): The access token used for authentication with the Yandex Market API.
+
+    Returns:
+        dict: A JSON response object containing the result of the stock update operation.
+
+    Example of correct usage:
+        response = update_stocks(['sku1', 'sku2', 'sku3'], 'campaign_123', 'your_access_token')
+
+    Example of incorrect usage:
+        response = update_stocks([], 'invalid_campaign_id', 'invalid_token')
+        # This will raise an error as an empty list of stocks cannot be processed.
+    """
     endpoint_url = "https://api.partner.market.yandex.ru/"
     headers = {
         "Content-Type": "application/json",
